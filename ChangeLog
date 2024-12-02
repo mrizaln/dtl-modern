@@ -1,3 +1,11 @@
+2024-12-02 Muhammad Rizal Nurromdhoni <mrizaln2000@gmail.com>
+
+	* Fork begins
+
+	* Migrate build system to CMake
+
+	* Restructure source files
+
 2024-07-11 Tatsuhiko Kubo <cubicdaiya@gmail.com>
 
 	* bugfix: fix compilation error in C++14 (#18). Thanks to @ZaychukAleksey
