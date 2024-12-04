@@ -1,685 +1,314 @@
-# dtl
+## dtl-modern
 
-`dtl` is the diff template library written in C++. The name of template is derived C++'s Template.
+The `dtl-modern` library is the modern Diff Template Library written in C++20 as an improvement of the [`dtl`](https://github.com/cubicdaiya/dtl) library written by [`cubicdaiya`](https://github.com/cubicdaiya).
 
-# Table of contents
+## Table of contents
 
- * [Features](#features)
- * [Getting started](#getting-started)
-     * [Compare two strings](#compare-two-strings)
-     * [Compare two data has arbitrary type](#compare-two-data-has-arbitrary-type)
-     * [Merge three sequences](#merge-three-sequences)
-     * [Patch function](#patch-function)
-     * [Difference as Unified Format](#difference-as-unified-format)
-     * [Compare large sequences](#compare-large-sequences)
-     * [Unserious difference](#unserious-difference)
-     * [Calculate only Edit Distance](#calculate-only-edit-distance)
- * [Algorithm](#algorithm)
-     * [Computational complexity](#computational-complexity)
-     * [Comparison when difference between two sequences is very large](#comparison-when-difference-between-two-sequences-is-very-large)
-     * [Implementations with various programming languages](#implementations-with-various-programming-languages)
- * [Examples](#examples)
-     * [strdiff](#strdiff)
-     * [intdiff](#intdiff)
-     * [unidiff](#unidiff)
-     * [unistrdiff](#unistrdiff)
-     * [strdiff3](#strdiff3)
-     * [intdiff3](#intdiff3)
-     * [patch](#patch)
-     * [fpatch](#fpatch)
- * [Running tests](#running-tests)
-     * [Building test programs](#building-test-programs)
-     * [Running test programs](#running-test-programs)
- * [Old commit histories](#old-commit-histories)
- * [License](#license)
+- [Features](#features)
+- [Getting started](#getting-started)
+  - [Comparing two strings](#comparing-two-strings)
+  - [Comparing two sequences that have arbitrary type](#comparing-two-sequences-that-have-arbitrary-type)
+  - [Difference as Unified Format](#difference-as-unified-format)
+  - [Comparing two large sequences](#comparing-two-large-sequences)
+  - [Calculate edit distance only](#calculate-only-edit-distance)
+  - [Displaying diff](#displaying-diff)
+  - [Unserious difference](#unserious-difference)
+  - [Merge three sequences](#merge-three-sequences)
+  - [Patch function](#patch-function)
+- [Algorithm](#algorithm)
+  - [Computational complexity](#computational-complexity)
+  - [Comparison when difference between two sequences is very large](#comparison-when-difference-between-two-sequences-is-very-large)
+  - [Implementations with various programming languages](#implementations-with-various-programming-languages)
+- [Examples](#examples)
+- [Tests](#tests)
+- [License](#license)
 
-# Features
+## Features
 
-`dtl` provides the functions for comparing two sequences have arbitrary type. But sequences must support random access\_iterator.
+The `dtl-modern` library provides functions for comparing two sequences/ranges that have arbitrary type.
 
-# Getting started
+The type must be comparable i.e. support equality comparison `a == b`.
+
+> - TODO: relax this requirement by adding support for explicit comparison function at call site
+
+The sequences must support **`std::random_access_iterator`** / **`std::ranges::random_access_range`**.
+
+> You can see the full requirement in [common.hpp](include/dtl_modern/common.hpp)
+
+## Getting started
 
 To start using this library, all you need to do is include `dtl.hpp`.
 
-```c++
-#include "dtl/dtl.hpp"
+```cpp
+#include <dtl_modern/dtl_modern.hpp>
 ```
 
-## Compare two strings
+### Comparing two strings
 
-First of all, calculate the difference between two strings.
+```cpp
+#include <dtl_modern/dtl_modern.hpp>
 
-```c++
-typedef char elem;
-typedef std::string sequence;
-sequence A("abc");
-sequence B("abd");
-dtl::Diff< elem, sequence > d(A, B);
-d.compose();
-```
+#include <string>
+#include <string_view>
 
-When the above code is run, `dtl` calculates the difference between A and B as Edit Distance and LCS and SES.
+int main()
+{
+    using namespace std::string_literals;
+    using namespace std::string_view_literals;
 
-The meaning of these three terms is below.
+    auto hello1 = "hello World!"sv;    // notice the different type, this one is std::string_view
+    auto hello2 = "Hell word"s;        // this one is std::string
 
-| Edit Distance | Edit Distance is numerical value for declaring a difference between two sequences. |
-|:--------------|:-----------------------------------------------------------------------------------|
-| LCS           | LCS stands for Longest Common Subsequence.                                         |
-| SES           | SES stands for Shortest Edit Script. I mean SES is the shortest course of action for tranlating one sequence into another sequence.|
+    // NOTE: passing const char[N] will work, but const char* won't (wrap it in std::string_view)
 
-If one sequence is "abc" and another sequence is "abd", Edit Distance and LCS and SES is below.
+    // as long as the two ranges have the same element type, you can compare them directly
+    auto [lcs, ses, edit_distance] = dtl_modern::diff(hello1, hello2);
 
-| Edit Distance | 2               |
-|:--------------|:----------------|
-| LCS           | ab              |
-| SES           | C a C b D c A d |
-
- * 「C」：Common
- * 「D」：Delete
- * 「A」：ADD
-
-If you want to know in more detail, please see [examples/strdiff.cpp](https://github.com/cubicdaiya/dtl/blob/master/examples/strdiff.cpp).
-
-This calculates Edit Distance and LCS and SES of two strings received as command line arguments and prints each.
-
-When one string is "abc" and another string "abd", the output of `strdiff` is below.
-
-```bash
-$ ./strdiff abc abd
-editDistance:2
-LCS:ab
-SES
- a
- b
--c
-+d
-$
-```
-
-## Compare two data has arbitrary type
-
-`dtl` can compare data has aribtrary type because of the C++'s template.
-
-But the compared data type must support the random access\_iterator.
-
-In the previous example, the string data compared,
-
-`dtl` can also compare two int vectors like the example below.
-
-```c++
-int a[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-int b[10] = {3, 5, 1, 4, 5, 1, 7, 9, 6, 10};
-std::vector<int> A(&a[0], &a[10]);
-std::vector<int> B(&b[0], &b[10]);
-dtl::Diff< int > d(A, B);
-d.compose();
-```
-
-If you want to know in more detail, please see [examples/intdiff.cpp](https://github.com/cubicdaiya/dtl/blob/master/examples/intdiff.cpp).
-
-## Merge three sequences
-
-`dtl` has the diff3 function.
-
-This function is that `dtl` merges three sequences.
-
-Additionally `dtl` detects the confliction.
-
-```c++
-typedef char elem;
-typedef std::string sequence;
-sequence A("qqqabc");
-sequence B("abc");
-sequence C("abcdef");
-dtl::Diff3<elem, sequence> diff3(A, B, C);
-diff3.compose();
-if (!diff3.merge()) {
-  std::cerr << "conflict." << std::endl;
-  return -1;
+    // ...
 }
-std::cout << "result:" << diff3.getMergedSequence() << std::endl;
 ```
 
-When the above code is run, the output is below.
+> You can read the source file to see the difference in usage between `dtl` and `dtl-modern`: [strdiff.cpp](examples/source/strdiff.cpp).
 
-```console
-result:qqqabcdef
+When the above code is run, `dtl-modern` calculates the difference between A and B as **Edit Distance**, **LCS**, and **SES**.
+
+| Term          | Description                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Edit Distance | Edit Distance is numerical value for declaring a difference between two sequences.                                        |
+| LCS           | LCS stands for Longest Common Subsequence.                                                                                |
+| SES           | SES, stands for Shortest Edit Script, is the shortest course of action for tranlating one sequence into another sequence. |
+
+If one sequence is `"abc"` and another sequence is `"abd"`, the **Edit Distance**, **LCS**, and **SES** are below.
+
+| Metric        | Value             |
+| :------------ | :---------------- |
+| Edit Distance | `2`               |
+| LCS           | `ab`              |
+| SES           | `C a C b D c A d` |
+
+With `C` stands for `Common`, `D` stands for `Delete`, and `A` stands for `Add`.
+
+### Comparing two sequences that have arbitrary type
+
+`dtl-modern` can compare two sequences with arbitrary data as long as both of the sequences contain the same type.
+
+For example, `dtl-modern` can compare two `int` ranges like the example below.
+
+```cpp
+#include <dtl_modern/dtl_modern.hpp>
+
+#include <array>
+#include <vector>
+
+int main()
+{
+    auto a = std::array { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    auto b = std::vector{ 3, 5, 1, 4, 5, 1, 7, 9, 6, 10 };
+
+    auto [lcs, ses, edit_distance] = dtl_modern::diff(a, b);
+
+    // ...
+}
 ```
 
-If you want to know in more detail, please see [examples/strdiff3.cpp](https://github.com/cubicdaiya/dtl/blob/master/examples/strdiff3.cpp).
+> You can read the source file to see the difference in usage between `dtl` and `dtl-modern`: [intdiff.cpp](examples/source/intdiff.cpp).
 
-## Patch function
+### Difference as Unified Format
 
-`dtl` can also translates one sequence to another sequence with SES.
+You can generate [Unified Format](http://www.gnu.org/s/diffutils/manual/html_node/Unified-Format.html) using `dtl-modern`.
 
-```c++
-typedef char elem;
-typedef std::string sequence;
-sequence A("abc");
-sequence B("abd");
-dtl::Diff<elem, sequence> d(A, B);
-d.compose();
-string s1(A);
-string s2 = d.patch(s1);
+```cpp
+#include <dtl_modern/dtl_modern.hpp>
+
+int main()
+{
+    using namespace std::string_view_literals;
+
+    auto a = "acbdeaqqqqqqqcbed"sv;   // const char* didn't work for diff and unidiff
+    auto b = "acebdabbqqqqqqqabed"sv;
+
+    // directly generate unified format hunks, lcs, ses, and edit distance
+    auto [uni_hunks, lcs, ses, edit_distance] = dtl_modern::unidiff(a, b);
+
+    // ...
+
+    // or generate unified format from ses generated beforehand
+    auto uni_hunks = dtl_modern::ses_to_unidiff(ses);
+
+    // ...
+}
 ```
 
-When the above code is run, s2 becomes "abd".
-The SES of A("abc") and B("abd") is below.
+> Previous example of [intdiff.cpp](examples/source/intdiff.cpp) used `unidiff`, you can read it directly.
+>
+> - TODO : implement function that translates one sequence into another sequence with Unified Format.
 
-```console
-Common a
-Common b
-Delete c
-Add    d
+### Comparing two large sequences
+
+When Comparing two large sequences, you can enable the `huge` flag on `dtl_modern::diff` and `dtl_modern::unidiff` function (default = `false`).
+
+> What the flag does is reserve a memory of size `2^21 x sizeof(Element)` at the start of diff-ing.
+
+```cpp
+#include <dtl_modern/dtl_modern.hpp>
+
+int main ()
+{
+    // ...
+
+    {
+        // set the huge flag to true, the default value is false
+        auto [lcs, ses, edit_distance] = dtl_modern::diff(a, b, true);
+
+        // ...
+    }
+
+    {
+        // set the huge flag to true, the default value is false
+        auto [uni_hunks, lcs, ses, edit_distance] = dtl_modern::unidiff(a, b, true);
+
+        // ...
+    }
+
+    // ...
+}
 ```
 
-The patch function translates a sequence as argument with SES.
-For this example, "abc" is translated to "abd" with above SES.
+### Calculate edit distance only
 
-Please see dtl's header files about the data structure of SES.
+If you need edit distance only, you can use this function since the calculation of edit distance is lighter than the calculation of LCS and SES.
 
-## Difference as Unified Format
+```cpp
+#include <dtl_modern/dtl_modern.hpp>
 
-`dtl` can also treat difference as Unified Format. See the example below.
+#include <array>
+#include <vector>
 
-```c++
-typedef char elem;
-typedef std::string sequence;
-sequence A("acbdeaqqqqqqqcbed");
-sequence B("acebdabbqqqqqqqabed");
-dtl::Diff<elem, sequence > d(A, B);
-d.compose();             // construct an edit distance and LCS and SES
-d.composeUnifiedHunks(); // construct a difference as Unified Format with SES.
-d.printUnifiedFormat();  // print a difference as Unified Format.
+int main()
+{
+    auto a = std::array { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    auto b = std::vector{ 3, 5, 1, 4, 5, 1, 7, 9, 6, 10 };
+
+    auto edit_distance = dtl_modern::edit_distance(a, b);
+
+    // ...
+}
 ```
 
-The difference as Unified Format of "acbdeaqqqqqqqcbed" and "acebdabbqqqqqqqabed" is below.
+### Displaying diff
 
-```diff
-@@ -1,9 +1,11 @@
- a
- c
-+e
- b
- d
--e
- a
-+b
-+b
- q
- q
- q
-@@ -11,7 +13,7 @@
- q
- q
- q
--c
-+a
- b
- e
- d
+Unlike `dtl`, `dtl-modern` consider this feature to be "optional" thus separating this feature into its own directory, [extra](include/dtl_modern/extra).
+
+No additional flag is needed to use this feature, you just need to `#include` the required header to use it.
+
+```cpp
+// for displaying SES
+#include <dtl_modern/extra/ses_display_simple.hpp>
+
+// for displaying Unified Format hunks
+#include <dtl_modern/extra/uni_hunk_display_simple.hpp>
 ```
 
-The data structure Unified Format is below.
+To display the SES/Unified Format hunks, you need to call `dtl_modern::extra::display` function. This function will return a type that wraps the argument into a type that can be displayed using `std::format` (or `fmt::format`; instruction below ) and/or `std::ostream&` using the `operator<<` overload.
 
-```c++
-/**
- * Structure of Unified Format Hunk
- */
-template <typename sesElem>
-struct uniHunk {
-  int a, b, c, d;                   // @@ -a,b +c,d @@
-  std::vector<sesElem> common[2];   // anteroposterior commons on changes
-  std::vector<sesElem> change;      // changes
-  int inc_dec_count;                // count of increace and decrease
-};
+The display functionality relies on `std::formatter` specialization for `std::format`. If you are using `fmt` library instead of the standard library, you can define macro `DTL_MODERN_DISPLAY_FMTLIB` to use `fmt::formatter` implementation instead. This action will replace the `std::formatter` specialization thus disabling `std::format` functionality and vice versa. There is plan to add an option to enable both.
+
+> NOTE: the `fmt` library itself is not provided by this library. To enable `fmt` feature you need to have `fmt` available and linked to your project where this library is used.
+
+```cpp
+#include <dtl_modern/dtl_modern.hpp>
+
+// uncomment this define to use the standard library <format> instead
+#define DTL_MODERN_DISPLAY_FMTLIB
+#include <dtl_modern/extra/ses_display_simple.hpp>
+#include <dtl_modern/extra/uni_hunk_display_simple.hpp>
+
+// using fmt
+#include <fmt/core.h>
+
+#include <array>
+#include <vector>
+
+int main()
+{
+    auto a = std::array { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    auto b = std::vector{ 3, 5, 1, 4, 5, 1, 7, 9, 6, 10 };
+
+    auto [uni_hunks, lcs, ses, edit_distance] = dtl_modern::unidiff(a, b);
+
+    fmt::println("\nSES:\n");
+    fmt::println("{}", dtl_modern::extra::display(ses));
+
+    fmt::println("\nUnified Format:\n");
+    fmt::println("{}", dtl_modern::extra::display(uni_hunks));
+}
 ```
 
-The actual blocks of Unified Format is this structure's vector.
+### Unserious difference
 
-If you want to know in more detail, please see [examples/unistrdiff.cpp](https://github.com/cubicdaiya/dtl/blob/master/examples/unistrdiff.cpp)
-and [examples/unidiff.cpp](https://github.com/cubicdaiya/dtl/blob/master/examples/unidiff.cpp) and dtl's header files.
+> - NOTE: not implemented yet for `dtl-modern`
 
-In addtion, `dtl` has the function translates one sequence to another sequence with Unified Format.
+### Merge three sequences
 
-```c++
-typedef char elem;
-typedef std::string sequence;
-sequence A("abc");
-sequence B("abd");
-dtl::Diff<elem, sequence> d(A, B);
-d.compose();
-d.composeUnifiedHunks()
-string s1(A);
-string s2 = d.uniPatch(s1);
-```
+> - NOTE: not implemented yet for `dtl-modern`
 
-When the above code is run, s2 becomes "abd".
-The uniPatch function translates a sequence as argument with Unified Format blocks.
+### Patch function
 
-For this example, "abc" is translated to "abd" with the Unified Format block below.
+> - NOTE: not implemented yet for `dtl-modern`
 
-```diff
-@@ -1,3 +1,3 @@
- a
- b
--c
-+d
-```
+## Algorithm
 
-## Compare large sequences
+The algorithm `dtl` (in turns `dtl-modern`) uses is based on [An O(NP) Sequence Comparison Algorithm](<https://doi.org/10.1016/0020-0190(90)90035-V>) as described by Sun Wu, Udi Manber and Gene Myers. This algorithm is an efficient algorithm for comparing two sequences.
 
-When compare two large sequences, `dtl` can optimizes the calculation of difference with the onHuge function.
-
-This function is available when the compared data type is std::vector.
-
-When you use this function, you may call this function before calling compose function.
-
-```c++
-typedef char elem;
-typedef  std::vector<elem> sequence;
-sequence A;
-sequence B;
-/* ・・・ */
-dtl::Diff< elem, sequence > d(A, B);
-d.onHuge();
-d.compose();
-```
-
-## Unserious difference
-
-The calculation of difference is very heavy.
-`dtl` uses An O(NP) Sequence Comparison Algorithm.
-
-Though this Algorithm is sufficiently fast,
-when difference between two sequences is very large,
-
-the calculation of LCS and SES needs massive amounts of memory.
-
-`dtl` avoids above-described problem by dividing each sequence into plural subsequences
-and joining the difference of each subsequence finally.
-
-As this way repeats allocating massive amounts of memory,
-`dtl` provides other way. It is the way of calculating unserious difference.
-
-For example, The normal SES of "abc" and "abd" is below.
-
-```console
-Common a
-Common b
-Delete c
-Add    d
-```
-
-The unserious SES of "abc" and "abd" is below.
-
-```console
-Delete a
-Delete b
-Delete c
-Add    a
-Add    b
-Add    d
-```
-
-Of course, when "abc" and "abd" are compared with `dtl`, above difference is not derived.
-
-`dtl` calculates the unserious difference when `dtl` judges the calculation of LCS and SES
-needs massive amounts of memory and unserious difference function is ON.
-
-`dtl` joins the calculated difference before `dtl` judges it and unserious difference finally.
-
-As a result, all difference is not unserious difference when unserious difference function is ON.
-
-When you use this function, you may call this function before calling compose function.
-
-```c++
-typedef char elem;
-typedef std::string sequence;
-sequence A("abc");
-sequence B("abd");
-dtl::Diff< elem, sequence > d(A, B);
-d.onUnserious();
-d.compose();
-```
-
-## Calculate only Edit Distance
-
-As using onOnlyEditDistance, `dtl` calculates the only edit distance.
-
-If you need only edit distance, you may use this function,
-because the calculation of edit distance is lighter than the calculation of LCS and SES.
-
-When you use this function, you may call this function before calling compose function.
-
-```c++
-typedef char elem;
-typedef std::string sequence;
-sequence A("abc");
-sequence B("abd");
-dtl::Diff< elem, sequence > d(A, B);
-d.onOnlyEditDistance();
-d.compose();
-```
-
-# Algorithm
-
-The algorithm `dtl` uses is based on "An O(NP) Sequence Comparison Algorithm" by described by Sun Wu, Udi Manber and Gene Myers.
-
-An O(NP) Sequence Comparison Algorithm(following, Wu's O(NP) Algorithm) is the efficient algorithm for comparing two sequences.
-
-## Computational complexity
+### Computational complexity
 
 The computational complexity of Wu's O(NP) Algorithm is averagely O(N+PD), in the worst case, is O(NP).
 
-## Comparison when difference between two sequences is very large
+### Comparison when difference between two sequences is very large
 
-Calculating LCS and SES efficiently at any time is a little difficult.
+Calculating LCS and SES efficiently at any time is a difficult and the calculation of LCS and SES needs massive amount of memory when a difference between two sequences is very large.
 
-Because that the calculation of LCS and SES needs massive amounts of memory when a difference between two sequences is very large.
+The `dtl` (in turns `dtl-modern`) avoids the above problem by dividing each sequence into plural sub-sequences and joining the difference of each sub-sequence at the end.
 
-The program uses that algorithm don't consider that will burst in the worst case.
+> This feature is supported after version 0.04
 
-`dtl` avoids above-described problem by dividing each sequence into plural subsequences and joining the difference of each subsequence finally. (This feature is supported after version 0.04)
-
-## Implementations with various programming languages
+### Implementations with various programming languages
 
 There are the Wu's O(NP) Algorithm implementations with various programming languages below.
 
 https://github.com/cubicdaiya/onp
 
-# Examples
+## Examples
 
-There are examples in [dtl/examples](https://github.com/cubicdaiya/dtl/tree/master/examples).
-`dtl` uses [SCons](http://scons.org/) for building examples and tests. If you build and run examples and tests, install SCons.
+There are examples in the [examples](examples) directory. I used Conan to be able to use external libraries for the examples. Make sure it is installed and configured in your system.
 
-## strdiff
+To build the examples, you first must change your current working directory to `examples`, then run these commands
 
-`strdiff` calculates a difference between two string sequences, but multi byte is not supported.
-
-```bash
-$ cd dtl/examples
-$ scons strdiff
-$ ./strdiff acbdeacbed acebdabbabed
-editDistance:6
-LCS:acbdabed
-SES
-  a
-  c
-+ e
-  b
-  d
-- e
-  a
-- c
-  b
-+ b
-+ a
-+ b
-  e
-  d
-$
+```sh
+conan install . --build missing -s build_type=Debug   # or Release
+cmake --preset conan-debug                            # conan-release if Release mode, conan-default if you're on windows regardless
+cmake --build --preset conan-debug                    # adjust the preset like above
 ```
 
-## intdiff
+## Tests
 
-`intdiff` calculates a diffrence between two int arrays sequences.
+Just like examples, the tests requires Conan to be able to be built and ran.
 
-```bash
-$ cd dtl/examples
-$ scons intdiff
-$ ./intdiff # There are data in intdiff.cpp
-1 2 3 4 5 6 7 8 9 10 
-3 5 1 4 5 1 7 9 6 10 
-editDistance:8
-LCS: 3 4 5 7 9 10 
-SES
-- 1
-- 2
-  3
-+ 5
-+ 1
-  4
-  5
-- 6
-+ 1
-  7
-- 8
-  9
-+ 6
-  10
-$
+Make sure you are in the `test` directory first, then run these commands to build the tests
+
+```sh
+conan install . --build missing -s build_type=Debug   # or Release
+cmake --preset conan-debug                            # conan-release if Release mode, conan-default if you're on windows regardless
+cmake --build --preset conan-debug                    # adjust the preset like above
 ```
 
-## unidiff
+To run the tests itself, you can run each binary directly or use `ctest`
 
-`unidiff` calculates a diffrence between two text file sequences,
-and output the difference between files with unified format.
-
-```bash
-$ cd dtl/examples
-$ scons unidiff
-$ cat a.txt
-a
-e
-c
-z
-z
-d
-e
-f
-a
-b
-c
-d
-e
-f
-g
-h
-i
-$ cat b.txt
-a
-d
-e
-c
-f
-e
-a
-b
-c
-d
-e
-f
-g
-h
-i
-$ ./unidiff a.txt b.txt
---- a.txt       2008-08-26 07:03:28 +0900
-+++ b.txt       2008-08-26 03:02:42 +0900
-@@ -1,11 +1,9 @@
- a
--e
--c
--z
--z
- d
- e
-+c
- f
-+e
- a
- b
- c
-$
+```sh
+ctest --preset conan-debug --output-on-failure        # adjust the preset like above
 ```
 
-## unistrdiff
+## License
 
-`unistrdiff` calculates a diffrence between two string sequences.
-and output the difference between strings with unified format.
-
-```bash
-$ cd dtl/examples
-$ scons unistrdiff
-$ ./unistrdiff acbdeacbed acebdabbabed
-editDistance:6
-LCS:acbdabed
-@@ -1,10 +1,12 @@
- a
- c
-+e
- b
- d
--e
- a
--c
- b
-+b
-+a
-+b
- e
- d
-$
-```
-
-## strdiff3
-
-`strdiff3` merges three string sequence and output the merged sequence.
-When the confliction has occured, output the string "conflict.".
-
-```bash
-$ cd dtl/examples
-$ scons strdiff3
-$ ./strdiff3 qabc abc abcdef
-result:qabcdef
-$
-```
-
-There is a output below when conflict occured.
-
-```bash
-$ ./strdiff3 adc abc aec
-conflict.
-$
-```
-
-## intdiff3
-
-`intdiff3` merges three integer sequence(vector) and output the merged sequence.
-
-```bash
-$ cd dtl/examples
-$ scons intdiff3
-$ ./intdiff3
-a:1 2 3 4 5 6 7 3 9 10
-b:1 2 3 4 5 6 7 8 9 10
-c:1 2 3 9 5 6 7 8 9 10
-s:1 2 3 9 5 6 7 3 9 10
-intdiff3 OK
-$
-```
-
-## patch
-
-`patch` is the test program. Supposing that there are two strings is called by A and B,
-`patch` translates A to B with Shortest Edit Script or unified format difference.
-
-```bash
-$ cd dtl/examples
-$ scons patch
-$ ./patch abc abd
-before:abc
-after :abd
-patch successed
-before:abc
-after :abd
-unipatch successed
-$
-```
-
-## fpatch
-
-`fpatch` is the test program. Supposing that there are two files is called by A and B,
-`fpatch` translates A to B with Shortest Edit Script or unified format difference.
-
-```bash
-$ cd dtl/examples
-$ scons fpatch
-$ cat a.txt
-a
-e
-c
-z
-z
-d
-e
-f
-a
-b
-c
-d
-e
-f
-g
-h
-i
-$ cat b.txt
-$ cat b.txt
-a
-d
-e
-c
-f
-e
-a
-b
-c
-d
-e
-f
-g
-h
-i
-$ ./fpatch a.txt b.txt
-fpatch successed
-unipatch successed
-$
-```
-
-# Running tests
-
-`dtl` uses [googletest](https://github.com/google/googletest) and [SCons](http://www.scons.org/) with testing dtl-self.
-
-# Building test programs
-
-If you build test programs for `dtl`, run `scons` in test direcotry.
-
-```bash
-$ scons
-```
-
-# Running test programs
-
-If you run all tests for `dtl`, run 'scons check' in test direcotry. (it is necessary that gtest is compiled)
-
-```bash
-$ scons check
-```
-
-If you run sectional tests, you may exeucte `dtl_test` directly after you run `scons`.
-Following command is the example for testing only Strdifftest.
-
-```bash
-$ ./dtl_test --gtest_filter='Strdifftest.*'
-```
-
-`--gtest-filters` is the function of googletest. googletest has many useful functions for testing software flexibly.
-If you want to know other functions of googletest, run `./dtl_test --help`.
-
-# Old commit histories
-
-Please see [cubicdaiya/dtl-legacy](https://github.com/cubicdaiya/dtl-legacy).
-
-# License
-
-Please read the file [COPYING](https://github.com/cubicdaiya/dtl/blob/master/COPYING).
+> - `dtl`: [COPYING](https://github.com/cubicdaiya/dtl/blob/master/COPYING)
+> - `dtl-modern` [COPYING](COPYING)
