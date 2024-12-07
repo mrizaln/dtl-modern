@@ -138,7 +138,7 @@ int main()
 }
 ```
 
-> You can read the source file to see the difference in usage between `dtl` and `dtl-modern`: [intdiff.cpp](examples/source/intdiff.cpp), or [filediff.cpp](examples/source/objdiff.cpp)
+> You can read the source file to see the difference in usage between `dtl` and `dtl-modern`: [intdiff.cpp](examples/source/intdiff.cpp), [objdiff.cpp](examples/source/objdiff.cpp), or [filediff.cpp](examples/source/filediff.cpp).
 
 ### Calculate edit distance only
 
