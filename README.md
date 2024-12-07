@@ -117,7 +117,7 @@ int main()
 
 ### Comparing two arbitrary sequences
 
-You can compare two sequences with arbitrary type as long as both of the sequences contain the same type. For example, `dtl-modern` can compare two `int` ranges like the example below.
+You can compare two sequences with arbitrary type as long as both of the sequences contain the same type. For example, You can compare two `int` ranges like in the example below.
 
 > Virtually no difference just like how you compare two strings.
 
@@ -163,7 +163,7 @@ int main()
 
 ### Difference as Unified Format
 
-You can generate [Unified Format](http://www.gnu.org/s/diffutils/manual/html_node/Unified-Format.html) using `dtl-modern`.
+You can generate [Unified Format](http://www.gnu.org/s/diffutils/manual/html_node/Unified-Format.html) using `dtl_modern::unidiff` and/or `dtl_modern::ses_to_unidiff` function.
 
 ```cpp
 #include <dtl_modern/dtl_modern.hpp>
@@ -245,7 +245,7 @@ int main()
     auto b = "abc"sv;
     auto c = "abcdef"sv;
 
-    // pass at template template argument std::basic_string to get std::basic_string<char> as the result
+    // pass a template std::basic_string to get std::basic_string<char> as the result
     auto maybe_result = dtl_modern::merge<std::basic_string>(a, b, c);
     if (maybe_result.is_conflict()) {
         // well, conflict happen, what to do ...
@@ -317,7 +317,7 @@ The display functionality relies on `std::formatter` specialization for `std::fo
 
 // must use fmt, the macro DTL_MODERN_DISPLAY_FMTLIB won't affect this header since it will use
 // fmt regardless
-#include <dtl_modern/extra/ses_display_simple.hpp>
+#include <dtl_modern/extra/ses_display_pretty.hpp>
 
 // using fmt
 #include <fmt/core.h>
