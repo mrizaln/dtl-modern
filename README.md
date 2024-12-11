@@ -364,6 +364,20 @@ Calculating LCS and SES efficiently at any time is a difficult and the calculati
 
 The `dtl` (in turns `dtl-modern`) avoids the above problem by dividing each sequence into plural sub-sequences and joining the difference of each sub-sequence at the end.
 
+## Documentation
+
+The documentation is written directly in the code. You can directly read it there or you generate the documentation using `Doxygen`.
+
+```sh
+doxygen docs/Doxygen
+```
+
+The resulting documentation is in the `docs/doxygen/html` directory.
+
+```sh
+firefox docs/doxygen/html/index.html
+```
+
 ## Examples
 
 There are examples in the [examples](examples) directory. I used Conan to be able to use external libraries for the examples. Make sure it is installed and configured in your system.
@@ -388,7 +402,7 @@ cmake --preset conan-debug                            # conan-release if Release
 cmake --build --preset conan-debug                    # adjust the preset like above
 ```
 
-To run the tests itself, you can run each binary directly or use `ctest`
+The tests itself will be ran automatically after a target has been built, but if you want to run the tests manually again, you can run each test binary directly or use `ctest`.
 
 ```sh
 ctest --preset conan-debug --output-on-failure        # adjust the preset like above
